@@ -1,15 +1,16 @@
 'use client';
 
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, Fragment, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppContext, Friend } from './context/AppContext';
 import { useContext } from 'react';
-import { socket } from './ws';
+import { SocketContext } from './context/SocketContext';
 
 export default function Home() {
   const router = useRouter();
   const context = useContext(AppContext);
-  const [newNotification, setNewNotification] = useState<any>();
+  const socketContext = useContext(SocketContext);
+  const [showDropdown, setShowDropdown] = useState(false);
 
   const searchUser = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -47,13 +48,7 @@ export default function Home() {
     });
   };
 
-  const joinRoom = (friendId: any) => {
-    socket.emit('joinRoom', { targetUserId: friendId });
-    router.push(`/chat-room/${friendId}`);
-  };
-
   const addFriend = async (friend: Friend) => {
-    console.log({ friend });
     await fetch('/api/addFriend', {
       method: 'POST',
       headers: {
@@ -67,66 +62,52 @@ export default function Home() {
     });
   };
 
-  const getFriends = async () => {
-    const res = await fetch('/api/getFriends', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${context.token}`,
-      },
-      body: JSON.stringify({ userId: context.user.id }),
-    });
-    const { response } = await res.json().then((data) => data);
-
-    context.updateUser({ ...context.user, friends: response });
+  const toggleDropdown = () => {
+    setShowDropdown((prev) => !prev);
   };
 
   useEffect(() => {
-    // Set up event listener for 'new_msg' only once
-    socket.on('new_msg', (data: any) => {
-      context.updateIncomingMessages(data.message);
-      console.log(data);
-      setNewNotification(data);
-    });
-
-    return () => {
-      // Clean up the event listener when the component unmounts
-      socket.off('new_msg');
-    };
-  }, []);
-
-  // useEffect(() => {
-  //   const authToken = localStorage.getItem('token');
-  //   if (authToken) {
-  //     context.updateToken(authToken);
-  //   }
-  // }, []);
-
-  useEffect(() => {
-    if (context.user.id.length > 0) {
-      socket.connect();
-      socket.on('connect', () => {
-        console.log('connected', {
-          socket: socket.id,
-          userId: context.user.id,
-        });
-        socket.emit('login', context.user.id);
-
-        socket.on('disconnect', () => {
-          console.log('disconnected');
-          router.push('/');
-          socket.disconnect();
-        });
-      });
+    const authToken = localStorage.getItem('token');
+    if (authToken) {
+      context.updateToken(authToken);
     }
-  }, [context.user.id.length]);
+  }, []);
 
   if (!context.token) {
     return (
-      <div>
-        <h1>You are not logged in</h1>
-        <button onClick={() => router.push('/login')}>Login</button>
-      </div>
+      <main className="flex flex-col min-h-screen bg-gray-900 dark:bg-black">
+        {/* Header */}
+        <header className="py-4 px-8 bg-gray-800 dark:bg-gray-900 w-full flex items-center justify-between">
+          <h1 className="text-xl font-bold text-white">
+            My Chat App - {context.user.name}
+          </h1>
+          {/* Placeholder for logo */}
+          <div className="w-10 h-10 bg-gray-600 rounded-full"></div>
+        </header>
+
+        {/* Main content */}
+        <div className="flex-grow flex flex-col items-center justify-center p-8">
+          {/* You are not logged in */}
+          <h1 className="text-xl font-bold text-white mb-4 text-center">
+            You are not logged in
+          </h1>
+          {/* Login button */}
+          <button
+            className="rounded-md bg-blue-500 px-4 py-2 text-white"
+            onClick={() => router.push('/login')}>
+            Login
+          </button>
+        </div>
+
+        {/* Footer */}
+        <footer className="py-4 px-8 bg-gray-800 dark:bg-gray-900 w-full text-center text-gray-500 dark:text-gray-400">
+          <p className="text-sm">My Chat App - © 2024. All rights reserved.</p>
+          <p className="text-xs">
+            Built with <span className="text-blue-500">React</span> and{' '}
+            <span className="text-yellow-500">Tailwind CSS</span>.
+          </p>
+        </footer>
+      </main>
     );
   }
 
@@ -134,73 +115,76 @@ export default function Home() {
     <main className="flex flex-col min-h-screen bg-gray-900 dark:bg-black">
       {/* Header */}
       <header className="py-4 px-8 bg-gray-800 dark:bg-gray-900 w-full flex items-center justify-between">
-        <h1 className="text-xl font-bold text-white">{context.user.name}</h1>
-        {/* Placeholder for logo */}
-        <div className="w-10 h-10 bg-gray-600 rounded-full"></div>
+        <div className="flex items-center justify-between w-full">
+          <h1 className="text-xl font-bold text-white">{context.user.name}</h1>
+          <div className="relative">
+            <div
+              className="w-10 h-10 bg-gray-600 rounded-full cursor-pointer hover:bg-gray-700"
+              onClick={toggleDropdown}></div>
+            {showDropdown && (
+              <div className="absolute top-full right-0 bg-white border border-gray-300 rounded-md shadow-lg mt-1">
+                <button
+                  className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                  onClick={handleLogout}>
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       </header>
 
       {/* Main content */}
       <div className="flex-grow p-8">
-        {/* Dropdown */}
-        {context.user.friends?.map((friend) => {
-          return (
-            <div
-              className="cursor-pointer flex justify-between border-2 border-blue-500 rounded-md color-blue-500 text-black-500 p-2 mt-2"
-              key={friend.userId}
-              onClick={() => joinRoom(friend.friendId!)}>
-              <h1>{friend.name}</h1>
-            </div>
-          );
-        })}
-
-        {/* Other content */}
-        <div className="flex justify-between mt-4">
-          <button
-            className="rounded-md bg-blue-500 px-4 py-2"
-            onClick={handleLogout}>
-            Logout
-          </button>
-          <button
-            className="rounded-md bg-blue-500 px-4 py-2"
-            onClick={() =>
-              addFriend({
-                name: 'meik',
-                userId: 'd9f93df8-d496-4ab9-8b05-aae26029ce97',
-              })
-            }>
-            Add Friend
-          </button>
-          <button
-            className="rounded-md bg-blue-500 px-4 py-2"
-            onClick={getFriends}>
-            Get Friends
-          </button>
-        </div>
-
         <form onSubmit={(e) => searchUser(e)} className="mt-8">
-          <h1>Search user</h1>
+          <h1 className="dark:text-white">Search user</h1>
           <input
-            className="border-2 border-blue-500 rounded-md color-blue-500 text-black-500 p-2 mt-2"
-            style={{ color: 'black' }}
+            className="border-2 border-blue-500 dark:border-gray-700 rounded-md text-black dark:text-white p-2 mt-2"
             type="text"
             id="user"
             name="user"
             placeholder="Search User"
           />
-          <button className="rounded-md bg-blue-500 px-4 py-2 mt-2">
+          <button className="rounded-md bg-blue-500 text-white dark:bg-gray-800 dark:text-gray-200 px-4 py-2 mt-2">
             Search User
           </button>
         </form>
-        {newNotification && (
-          <h1
-            className="text-white text-2xl cursor-pointer"
-            onClick={() => joinRoom(newNotification.room)}>
-            You received a new message from{' '}
-            <div className="text-blue-500 font-bold cursor-pointer">
-              {newNotification.room}
-            </div>
+
+        {/* User list */}
+        <div className="mt-8">
+          <h1 className="text-white text-2xl mb-4 dark:text-white">
+            My Contacts
           </h1>
-        )}
+
+          {context.user.friends?.map((friend) => {
+            return (
+              <div
+                key={friend.userId}
+                className="flex items-center justify-between cursor-pointer border-b border-gray-200 py-4 px-6 dark:border-gray-700 transition-colors duration-200 ease-in-out hover:bg-gray-800"
+                onClick={() => {
+                  router.push(`/chat-room/${friend.friendId!}`);
+                }}>
+                <div className="flex items-center space-x-4">
+                  {/* User avatar */}
+                  <div className="w-10 h-10 bg-gray-300 rounded-full"></div>
+                  {/* User name */}
+                  <div className="text-lg font-semibold dark:text-white">
+                    {friend.name}
+                  </div>
+                </div>
+                {/* Badge for new message */}
+                {socketContext.newNotification &&
+                  socketContext.newNotification.from.senderId ===
+                    friend.friendId &&
+                  !socketContext.isMessageRead && (
+                    <div className="bg-blue-500 text-white rounded-full px-2 py-1 text-xs dark:bg-gray-700 dark:text-gray-200">
+                      New
+                    </div>
+                  )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Footer */}

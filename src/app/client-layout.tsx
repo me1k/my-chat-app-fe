@@ -1,7 +1,9 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { AppContext, User } from './context/AppContext';
 import { useContext, useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 
 export default function ClientLayout({
   children,
@@ -9,6 +11,8 @@ export default function ClientLayout({
   children: React.ReactNode;
 }>) {
   const context = useContext(AppContext);
+  const router = useRouter();
+  const pathname = usePathname();
   const [user, setUser] = useState<User>({
     id: '',
     name: '',
@@ -23,8 +27,11 @@ export default function ClientLayout({
   const [token, setToken] = useState('');
   const [incomingMessages, setIncomingMessages] = useState<any>([]);
 
-  const updateIncomingMessages = (message: any) => {
-    setIncomingMessages((prev: any) => [...prev, { message }]);
+  const updateIncomingMessages = (data: any) => {
+    setIncomingMessages((prev: any) => [
+      ...prev,
+      { message: data.message, from: data.from },
+    ]);
   };
 
   const updateToken = (token: string) => {
@@ -40,7 +47,8 @@ export default function ClientLayout({
       body: JSON.stringify({ token: authToken }),
     });
 
-    res.json().then((data) => {
+    res.json().then((data: any) => {
+      console.log({ data });
       setUser({ ...data.user.user, loggedIn: true });
     });
   };
@@ -49,11 +57,12 @@ export default function ClientLayout({
     const authToken = localStorage.getItem('token');
 
     if (authToken) {
-      console.log({authToken})
       context.updateToken(authToken);
     }
 
-    if (authToken) getUser(authToken);
+    if (authToken) {
+      getUser(authToken);
+    }
   }, []);
 
   return (

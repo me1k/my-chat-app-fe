@@ -2,10 +2,12 @@
 
 import { AppContext } from '@/app/context/AppContext';
 import { socket } from '@/app/ws';
-import { FormEvent, useContext, useEffect, useState } from 'react';
+import { FormEvent, useContext, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import { SocketContext } from '@/app/context/SocketContext';
 
 const Pageroom = () => {
+  const socketContext = useContext(SocketContext);
   const context = useContext(AppContext);
   const { id: targetUserId } = useParams();
   const router = useRouter();
@@ -15,48 +17,64 @@ const Pageroom = () => {
     const formData = new FormData(e.target as HTMLFormElement);
     const message = formData.get('message') as string;
 
-    socket.emit('message', message);
-    context.updateIncomingMessages(message);
+    socket.emit('message', { to: targetUserId, message });
+    context.updateIncomingMessages({ message });
+    (e.target as HTMLFormElement).reset();
   };
 
-  useEffect(() => {
-    console.log('re-render');
-    const getUser = async () => {
-      await fetch('/api/user', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ token: context.token }),
-      });
-    };
-    if (context.token) getUser();
-  }, []);
+  useEffect(() => socketContext.setIsMessageRead(true), []);
 
   return (
     <main className="flex flex-col min-h-screen bg-gray-900 dark:bg-black">
       {/* Header */}
       <header className="py-4 px-8 bg-gray-800 dark:bg-gray-900 w-full flex items-center justify-between">
-        <button onClick={() => router.push('/')} className="text-white">
-          {/* You can replace the text with an icon if you prefer */}
+        <button
+          onClick={() => {
+            router.push('/');
+          }}
+          className="text-white">
           Back
         </button>
-        <h1 className="text-xl font-bold text-white">{targetUserId}</h1>
+        <h1 className="text-xl font-bold text-white">
+          {
+            context.user.friends?.find(
+              (friend: any) => friend.friendId === targetUserId
+            )?.name
+          }
+        </h1>
         {/* Placeholder for logo */}
         <div className="w-10 h-10 bg-gray-600 rounded-full"></div>
       </header>
       {/* Chat window */}
       <div className="flex-1 flex flex-col justify-between px-4 py-6">
         <div className="flex flex-col gap-4 overflow-y-auto">
-          {context.incomingMessages.map(({ message }: any, index: number) => {
-            return (
-              <div key={index} className="flex items-end justify-end">
-                <div className="bg-gray-600 text-white rounded-lg p-2 max-w-xs">
-                  <p>{message}</p>
+          {context.incomingMessages.map(
+            ({ message, from }: any, index: number) => {
+              const sender = context.user.friends?.find(
+                (friend: any) => friend.friendId === from?.senderId
+              );
+
+              return (
+                <div
+                  key={index}
+                  className={`flex items-end justify-${
+                    from?.senderId ? 'end' : 'start'
+                  }`}>
+                  <div
+                    className={`${
+                      from?.senderId ? 'bg-gray-600' : 'bg-blue-500'
+                    } text-white rounded-lg p-2 max-w-xs`}>
+                    {!from?.senderId ? (
+                      <p className="text-xs mb-1">Ich</p>
+                    ) : (
+                      <p className="text-xs mb-1">{sender?.name}</p>
+                    )}
+                    <p>{message}</p>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            }
+          )}
         </div>
         {/* Input field */}
         <form onSubmit={sendMessage} className="flex items-center mt-4">
