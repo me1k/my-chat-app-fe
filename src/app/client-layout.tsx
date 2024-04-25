@@ -1,45 +1,16 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { AppContext, User } from './context/AppContext';
-import { useContext, useEffect, useState } from 'react';
-import { usePathname } from 'next/navigation';
+import { AppContext } from './context/AppContext';
+import { useEffect } from 'react';
+import { useAppReducer } from './reducer';
+import { updateTokenAction, updateUserAction } from './actions';
 
 export default function ClientLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const context = useContext(AppContext);
-  const router = useRouter();
-  const pathname = usePathname();
-  const [user, setUser] = useState<User>({
-    id: '',
-    name: '',
-    loggedIn: false,
-    friends: [
-      {
-        name: '',
-        userId: '',
-      },
-    ],
-  });
-  const [token, setToken] = useState('');
-  const [incomingMessages, setIncomingMessages] = useState<any>([]);
-
-  const updateIncomingMessages = (data: any) => {
-    setIncomingMessages((prev: any) => [
-      ...prev,
-      { message: data.message, from: data.from },
-    ]);
-  };
-
-  const updateToken = (token: string) => {
-    setToken(token);
-  };
-  const updateUser = (user: User) => {
-    setUser(user);
-  };
+  const { appState, appDispatch } = useAppReducer();
 
   const getUser = async (authToken: string) => {
     const res = await fetch('/api/user', {
@@ -48,8 +19,7 @@ export default function ClientLayout({
     });
 
     res.json().then((data: any) => {
-      console.log({ data });
-      setUser({ ...data.user.user, loggedIn: true });
+      appDispatch(updateUserAction({ ...data.user.user, loggedIn: true }));
     });
   };
 
@@ -57,7 +27,7 @@ export default function ClientLayout({
     const authToken = localStorage.getItem('token');
 
     if (authToken) {
-      context.updateToken(authToken);
+      appDispatch(updateTokenAction(authToken));
     }
 
     if (authToken) {
@@ -68,12 +38,8 @@ export default function ClientLayout({
   return (
     <AppContext.Provider
       value={{
-        token,
-        updateToken,
-        updateUser,
-        user,
-        incomingMessages,
-        updateIncomingMessages,
+        appState,
+        appDispatch
       }}>
       {children}
     </AppContext.Provider>

@@ -2,13 +2,13 @@
 
 import { useRouter } from 'next/navigation';
 import { FormEvent, useContext } from 'react';
-import { AppContext } from '../context/AppContext';
 import Link from 'next/link';
-import { socket } from '../ws';
+import { updateTokenAction, updateUserAction } from '../actions';
+import { AppContext } from '../context/AppContext';
 
 const LoginView = () => {
   const router = useRouter();
-  const context = useContext(AppContext);
+  const { appState, appDispatch } = useContext(AppContext);
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
@@ -27,15 +27,13 @@ const LoginView = () => {
         res.json().then((data) => {
           console.log({ data });
 
-          
-
-          context.updateUser({
-            name: data.response.user.name,
-            id: data.response.user.id,
-            loggedIn: true,
-          });
-
-          context.updateToken(data.response.token);
+          appDispatch(
+            updateUserAction({
+              ...data.response.user,
+              loggedIn: true,
+            })
+          );
+          appDispatch(updateTokenAction(data.response.token));
           localStorage.setItem('token', data.response.token);
           router.push('/');
         });

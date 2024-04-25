@@ -1,35 +1,19 @@
 import { createContext } from 'react';
-
-export type Friend = {
-  name: string;
-  userId: string;
-  friendId?: string;
-};
-
-export type User = {
-  id: string;
-  name: string;
-  loggedIn: boolean;
-  friends?: Friend[];
-};
+import { AppDispatch, AppState } from '../types';
 
 export const AppContext = createContext<{
-  updateUser: (user: User) => void;
-  user: User;
-  token: string;
-  updateToken: (token: string) => void;
-  updateIncomingMessages: (message: any) => void;
-  incomingMessages: any;
+  appState: AppState;
+  appDispatch: AppDispatch;
 }>({
-  token: '',
-  updateToken: (token: string) => {},
-  updateUser: (user: User) => {},
-  user: {
-    id: '',
-    name: '',
-    loggedIn: false,
-    friends: undefined,
+  appState: {
+    user: {
+      friends: [],
+      id: '',
+      loggedIn: false,
+      name: '',
+    },
+    token: null,
+    incomingMessages: [],
   },
-  updateIncomingMessages: (message: any) => {},
-  incomingMessages: [],
+  appDispatch: () => {},
 });

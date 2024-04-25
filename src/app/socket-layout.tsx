@@ -1,9 +1,10 @@
 'use client';
 
 import { useContext, useEffect, useState } from 'react';
-import ClientLayout from './client-layout';
 import { SocketContext } from './context/SocketContext';
 import { socket } from './ws';
+import { useAppReducer } from './reducer';
+import { updateIncomingMessagesAction } from './actions';
 import { AppContext } from './context/AppContext';
 
 export default function SocketLayout({
@@ -11,16 +12,16 @@ export default function SocketLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const context = useContext(AppContext);
+  const { appState, appDispatch } = useContext(AppContext);
   const [newNotification, setNewNotification] = useState();
   const [isMessageRead, setIsMessageRead] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (context.user.id.length > 0) {
+    if (appState.user.id.length > 0) {
       setLoading(false);
     }
-  }, [context.user.id.length]);
+  }, [appState.user.id.length]);
 
   useEffect(() => {
     if (!loading) {
@@ -28,17 +29,18 @@ export default function SocketLayout({
 
       socket.on('connect', () => {
         console.log('Socket connected');
-        socket.emit('login', context.user.id);
+        socket.emit('login', appState.user.id);
       });
 
       socket.on('new_msg', (data: any) => {
-        console.log({ data });
         setNewNotification(data);
         setIsMessageRead(false);
-        context.updateIncomingMessages({
-          message: data.message,
-          from: data.from,
-        });
+        appDispatch(
+          updateIncomingMessagesAction({
+            message: data.message,
+            from: data.from,
+          })
+        );
       });
 
       socket.on('disconnect', () => {
@@ -51,7 +53,7 @@ export default function SocketLayout({
     return () => {
       socket.disconnect();
     };
-  }, [loading, context.user.id.length]);
+  }, [loading]);
 
   return (
     <SocketContext.Provider
