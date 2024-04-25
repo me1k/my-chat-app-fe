@@ -1,10 +1,11 @@
 'use client';
 
-import { AppContext } from '@/app/context/AppContext';
 import { socket } from '@/app/ws';
 import { FormEvent, useContext, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { SocketContext } from '@/app/context/SocketContext';
+import { updateIncomingMessagesAction } from '@/app/actions';
+import { AppContext } from '@/app/context/AppContext';
 
 const Pageroom = () => {
   const socketContext = useContext(SocketContext);
@@ -18,7 +19,7 @@ const Pageroom = () => {
     const message = formData.get('message') as string;
 
     socket.emit('message', { to: targetUserId, message });
-    context.updateIncomingMessages({ message });
+    context.appDispatch(updateIncomingMessagesAction({ message }));
     (e.target as HTMLFormElement).reset();
   };
 
@@ -37,7 +38,7 @@ const Pageroom = () => {
         </button>
         <h1 className="text-xl font-bold text-white">
           {
-            context.user.friends?.find(
+            context.appState.user.friends?.find(
               (friend: any) => friend.friendId === targetUserId
             )?.name
           }
@@ -48,28 +49,30 @@ const Pageroom = () => {
       {/* Chat window */}
       <div className="flex-1 flex flex-col justify-between px-4 py-6">
         <div className="flex flex-col gap-4 overflow-y-auto">
-          {context.incomingMessages.map(
-            ({ message, from }: any, index: number) => {
-              const sender = context.user.friends?.find(
-                (friend: any) => friend.friendId === from?.senderId
+          {context.appState.incomingMessages.map(
+            ({ message }: any, index: number) => {
+              const sender = context.appState.user.friends?.find(
+                (friend: any) => friend.friendId === message.from?.senderId
               );
 
               return (
                 <div
                   key={index}
                   className={`flex items-end justify-${
-                    from?.senderId ? 'end' : 'start'
+                    typeof sender === 'undefined' ? 'end' : 'start'
                   }`}>
                   <div
                     className={`${
-                      from?.senderId ? 'bg-gray-600' : 'bg-blue-500'
+                      typeof sender === 'undefined'
+                        ? 'bg-gray-600'
+                        : 'bg-blue-500'
                     } text-white rounded-lg p-2 max-w-xs`}>
-                    {!from?.senderId ? (
+                    {typeof sender === 'undefined' ? (
                       <p className="text-xs mb-1">Ich</p>
                     ) : (
                       <p className="text-xs mb-1">{sender?.name}</p>
                     )}
-                    <p>{message}</p>
+                    <p>{message.message}</p>
                   </div>
                 </div>
               );
