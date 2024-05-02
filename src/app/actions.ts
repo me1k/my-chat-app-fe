@@ -11,9 +11,9 @@ const updateUserAction = (user: User): UpdateUserAction => ({
   user,
 });
 
-const updateTokenAction = (token: string): UpdateTokenAction => ({
+const updateTokenAction = (accessToken: string): UpdateTokenAction => ({
   type: ActionType.UPDATE_TOKEN,
-  token,
+  accessToken,
 });
 
 const updateIncomingMessagesAction = (

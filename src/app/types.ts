@@ -9,7 +9,7 @@ export type User = {
 // Define the state type
 export type AppState = {
   user: User;
-  token: string | null;
+  accessToken: string | null;
   incomingMessages: { message: any }[]; // Define the type for incoming messages
 };
 
@@ -30,7 +30,7 @@ export type UpdateUserAction = {
 
 export type UpdateTokenAction = {
   type: ActionType.UPDATE_TOKEN;
-  token: string;
+  accessToken: string;
 };
 
 export type UpdateIncomingMessagesAction = {

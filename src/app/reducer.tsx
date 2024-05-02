@@ -10,7 +10,7 @@ const initialState: AppState = {
     loggedIn: false,
     name: '',
   },
-  token: null,
+  accessToken: null,
   incomingMessages: [],
 };
 
@@ -24,7 +24,7 @@ const reducer = (state: AppState, action: Action) => {
     case ActionType.UPDATE_TOKEN:
       return {
         ...state,
-        token: action.token,
+        accessToken: action.accessToken,
       };
     case ActionType.UPDATE_INCOMING_MESSAGES:
       console.log({ action });

@@ -8,18 +8,25 @@ export async function POST(req: NextRequest, res: NextResponse) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        mode: 'same-origin',
+        redirect: 'follow',
+        withCredentials: 'true',
+        credentials: 'include',
       },
       body: JSON.stringify({ username, password }),
     });
 
-    const { user, session, token } = await res.json().then((data) => data);
+    const { user, session, accessToken } = await res
+      .json()
+      .then((data) => data);
 
-    return Response.json({
+    return NextResponse.json({
       ok: true,
       status: 200,
-      response: { user, session, token },
+      response: { user, session, accessToken },
     });
   } catch {
-    return Response.json({ ok: false, status: 401 });
+    return NextResponse.json({ ok: false, status: 401 });
   }
 }

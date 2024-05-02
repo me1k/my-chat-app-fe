@@ -18,10 +18,10 @@ export default function SocketLayout({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (appState.user.id.length > 0) {
+    if (appState.user?.id?.length > 0) {
       setLoading(false);
     }
-  }, [appState.user.id.length]);
+  }, [appState.user?.id?.length]);
 
   useEffect(() => {
     if (!loading) {

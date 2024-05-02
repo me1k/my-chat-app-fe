@@ -1,19 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-export async function POST(req: NextRequest, res: NextResponse) {  
+export async function GET(req: NextRequest, res: NextResponse) {
   try {
-    const result = await fetch('http://localhost:8080/logout', {
+    const result = await fetch('http://localhost:8080/refreshToken', {
       method: 'POST',
-      credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${req.headers.get('Authorization')}`,
+        'Accept': 'application/json',
+        mode: 'same-origin',
+        redirect: 'follow',
+        credentials: 'include',
       },
     });
 
     const data = await result.json().then((data) => data);
     console.log({ data });
-    return Response.json({ ok: true, response: { data } });
+    return Response.json({ ok: true });
   } catch {
     return Response.json({ ok: false });
   }

@@ -1,17 +1,35 @@
-export async function POST(req: Request, res: Response) {
-  const { token } = await req.json();
+import { NextRequest, NextResponse } from 'next/server';
 
+export async function GET(req: NextRequest, res: NextResponse) {
   try {
-    const user = await fetch('http://localhost:8080/user', {
+    //Check if token exists
+    if (!req.headers.get('Authorization')) {
+      throw new Error('Token is missing');
+    }
+
+    // Make request to external API
+    const response = await fetch('http://localhost:8080/user', {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+        Authorization: req.headers.get('Authorization') || '',
       },
-    }).then((res) => res.json());
+    });
 
-    return Response.json({ ok: true, user });
-  } catch {
-    return Response.json({ ok: false });
+    // Parse response JSON data
+    const { ok, user } = await response
+      .json()
+      .then(({ ok, user }) => ({ ok, user }));
+
+    if (!ok) {
+      throw new Error('Failed to fetch user');
+    }
+
+    // Return response indicating success
+    return NextResponse.json({ ok: true, user });
+  } catch (error: any) {
+    console.error('Error:', error);
+    // Return response indicating failure
+    return NextResponse.json({ ok: false, error: error.message });
   }
 }

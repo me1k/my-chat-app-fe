@@ -5,10 +5,12 @@ import { FormEvent, useContext } from 'react';
 import Link from 'next/link';
 import { updateTokenAction, updateUserAction } from '../actions';
 import { AppContext } from '../context/AppContext';
+import { AuthContext } from '../context/AuthContext';
 
 const LoginView = () => {
   const router = useRouter();
   const { appState, appDispatch } = useContext(AppContext);
+  const { authDispatch } = useContext(AuthContext);
   const handleLogin = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
@@ -16,28 +18,30 @@ const LoginView = () => {
     const username = formData.get('username') as string;
     const password = formData.get('password') as string;
 
-    await fetch('/api/login', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ username, password }),
-    }).then((res) => {
-      if (res.status === 200) {
-        res.json().then((data) => {
-          console.log({ data });
+    var headers = new Headers();
+    headers.append('Content-Type', 'application/json');
+    headers.append('Accept', 'application/json');
 
-          appDispatch(
-            updateUserAction({
-              ...data.response.user,
-              loggedIn: true,
-            })
-          );
-          appDispatch(updateTokenAction(data.response.token));
-          localStorage.setItem('token', data.response.token);
-          router.push('/');
+    await fetch('http://localhost:8080/login', {
+      method: 'POST',
+      credentials: 'include',
+      headers: headers,
+      body: JSON.stringify({ username, password }),
+    }).then((res: any) => {
+      res.json().then((data: any) => {
+        appDispatch(
+          updateUserAction({
+            ...data.user,
+            loggedIn: true,
+          })
+        );
+        authDispatch({
+          type: 'UPDATE_TOKEN',
+          accessToken: data.accessToken,
         });
-      }
+        localStorage.setItem('accessToken', data.accessToken);
+        router.push('/');
+      });
     });
   };
   return (

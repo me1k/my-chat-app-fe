@@ -1,16 +1,34 @@
 'use client';
 
-import { FormEvent, useEffect, useRef, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AppContext } from './context/AppContext';
 import { useContext } from 'react';
 import { SocketContext } from './context/SocketContext';
 import { updateUserAction } from './actions';
+import { AuthContext } from './context/AuthContext';
+
+function parseJwt(token: string) {
+  var base64Url = token.split('.')[1];
+  var base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+  var jsonPayload = decodeURIComponent(
+    window
+      .atob(base64)
+      .split('')
+      .map(function (c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+      })
+      .join('')
+  );
+
+  return JSON.parse(jsonPayload);
+}
 
 export default function Home() {
   const router = useRouter();
   const socketContext = useContext(SocketContext);
   const { appState, appDispatch } = useContext(AppContext);
+  const { accessToken } = useContext(AuthContext);
   const [showDropdown, setShowDropdown] = useState(false);
 
   const searchUser = async (e: FormEvent<HTMLFormElement>) => {
@@ -23,9 +41,9 @@ export default function Home() {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${appState.token}`,
+        Authorization: `Bearer ${appState.accessToken}`,
       },
-      body: JSON.stringify({ name, token: appState.token }),
+      body: JSON.stringify({ name, accessToken: appState.accessToken }),
     });
   };
 
@@ -35,7 +53,7 @@ export default function Home() {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ token: appState.token }),
+      body: JSON.stringify({ accessToken: appState.accessToken }),
     }).then((res) => {
       if (res.status === 200) {
         res.json().then((data) => {
@@ -49,7 +67,7 @@ export default function Home() {
                 friends: [],
               })
             );
-            localStorage.removeItem('token');
+            localStorage.removeItem('accessToken');
           }
         });
       }
@@ -70,27 +88,30 @@ export default function Home() {
     });
   };
 
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        event.target instanceof Node &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
-        setShowDropdown(false);
-      }
+    const getFriends = async () => {
+      const res = await fetch('/api/getFriends', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+      });
+
+      const { friends } = await res.json().then((data) => data);
+      appDispatch(updateUserAction({ ...appState.user, friends }));
     };
+    getFriends();
+  }, [accessToken]);
 
-    document.body.addEventListener('click', handleClickOutside);
+  // useEffect(() => {
+  //   if (!accessToken) return;
+  //   if (!parseJwt(accessToken || '')) {
+  //     router.push('/login');
+  //   }
+  // }, [accessToken]);
 
-    return () => {
-      document.body.removeEventListener('click', handleClickOutside);
-    };
-  }, []);
-
-  if (!appState?.token) {
+  if (!accessToken) {
     return (
       <main className="flex flex-col min-h-screen bg-gray-900 dark:bg-black">
         {/* Header */}
@@ -136,7 +157,7 @@ export default function Home() {
             {appState?.user.name}
           </h1>
           {/* Dropdown */}
-          <div className="relative" ref={dropdownRef}>
+          <div className="relative">
             <div
               className="w-10 h-10 bg-gray-600 rounded-full cursor-pointer hover:bg-gray-700 flex items-center justify-center"
               onClick={() => setShowDropdown((prev) => !prev)}>
@@ -161,10 +182,14 @@ export default function Home() {
                 showDropdown ? 'opacity-100' : 'opacity-0 invisible'
               }`}>
               <ul className="py-2">
-                <li className="px-4 py-2 text-gray-100 dark:text-gray-200 hover:bg-gray-600 dark:hover:bg-gray-700 cursor-pointer transition-colors duration-300">
+                <li
+                  onClick={addFriend}
+                  className="px-4 py-2 text-gray-100 dark:text-gray-200 hover:bg-gray-600 dark:hover:bg-gray-700 cursor-pointer transition-colors duration-300">
                   Add
                 </li>
-                <li className="px-4 py-2 text-gray-100 dark:text-gray-200 hover:bg-gray-600 dark:hover:bg-gray-700 cursor-pointer transition-colors duration-300">
+                <li
+                  onClick={handleLogout}
+                  className="px-4 py-2 text-gray-100 dark:text-gray-200 hover:bg-gray-600 dark:hover:bg-gray-700 cursor-pointer transition-colors duration-300">
                   Logout
                 </li>
               </ul>

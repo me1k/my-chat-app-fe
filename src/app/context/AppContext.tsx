@@ -12,7 +12,7 @@ export const AppContext = createContext<{
       loggedIn: false,
       name: '',
     },
-    token: null,
+    accessToken: null,
     incomingMessages: [],
   },
   appDispatch: () => {},
